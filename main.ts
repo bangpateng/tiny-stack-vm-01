@@ -1,10 +1,8 @@
-// Tiny stack VM for make.fun's tiny-stack-vm-01 ISA (see kit ISA.md).
-// Runs every /input/<id>/program.bin on its input.bin and writes
-// /output/<id>/stdout.bin + /output/<id>/exit.txt. Pure, deterministic.
+// Tiny stack VM for make.fun's tiny-stack-vm-01 ISA. Pure, deterministic.
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-// Per-opcode tables, indexed by opcode byte: immediate length, pops, pushes.
+// Per-opcode tables: immediate length, pops, pushes.
 const IM = new Uint8Array(256), PO = new Uint8Array(256), PU = new Uint8Array(256), KN = new Uint8Array(256);
 for (const [o, i, p, u] of [
   [0, 0, 0, 0], [1, 1, 0, 1], [2, 4, 0, 1], [3, 0, 1, 0], [4, 0, 1, 2],
@@ -110,7 +108,9 @@ function run(P, B) {
 
 const I = process.env.MAKEFUN_INPUT_DIR ?? '/input';
 const O = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
-for (const id of readdirSync(I).sort()) {
+// Only directories hold programs; stray files in /input are skipped.
+for (const e of readdirSync(I, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name).sort()) {
+  const id = e;
   mkdirSync(join(O, id), { recursive: true });
   const r = run(readFileSync(join(I, id, 'program.bin')), readFileSync(join(I, id, 'input.bin')));
   writeFileSync(join(O, id, 'stdout.bin'), r[1]);
